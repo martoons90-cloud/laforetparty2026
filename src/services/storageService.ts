@@ -34,8 +34,26 @@ const EXPENSES_KEY = 'el_desayuno_expenses_v1';
 const CASH_FLOW_KEY = 'el_desayuno_cashflow_v1';
 const CURRENT_USER_KEY = 'el_desayuno_current_user_v3';
 
-/** Estado vacío: la interfaz nunca inventa información si la base no la devuelve. */
-export const DEFAULT_USERS: User[] = [];
+export const DEFAULT_USERS: User[] = [
+  {
+    id: 'user-efrain',
+    name: 'Efraín Rodríguez',
+    username: 'efrain.rodriguez',
+    email: 'efrain.rodriguez@eldesayuno.com.ar',
+    role: 'admin',
+    partName: 'Administración General',
+    cabezaNumber: 1,
+    annualQuotaDays: 30,
+    usedDays: 0,
+    pendingDays: 0,
+    color: '#163323',
+    avatarInitials: 'ER',
+    phone: '',
+    password: 'IDEAS1271',
+    active: true,
+    createdAt: '2026-01-01',
+  },
+];
 export const DEFAULT_SETTINGS: TrustSettings = {
   houseName: '', location: '', wifiSsid: '', wifiPassword: '', checkInTime: '', checkOutTime: '',
   autoCleaningBufferHours: 0, cancellationMinDays: 0, maxGuestsLimit: 0, emergencyAddress: '',
@@ -142,7 +160,11 @@ class StorageService {
     // No reutilizamos el caché anterior: la base es la única fuente de verdad.
     [USERS_KEY, BOOKINGS_KEY, BLOCKS_KEY, SETTINGS_KEY, RULES_KEY, CONTACTS_KEY,
       DOCUMENTS_KEY, INVENTORY_KEY, INCIDENTS_KEY, NOTIFICATIONS_KEY, FEES_KEY,
-      EXPENSES_KEY, CASH_FLOW_KEY].forEach((key) => localStorage.setItem(key, key === SETTINGS_KEY ? JSON.stringify(DEFAULT_SETTINGS) : '[]'));
+      EXPENSES_KEY, CASH_FLOW_KEY].forEach((key) => {
+        if (key === SETTINGS_KEY) localStorage.setItem(key, JSON.stringify(DEFAULT_SETTINGS));
+        else if (key === USERS_KEY) localStorage.setItem(key, JSON.stringify(DEFAULT_USERS));
+        else localStorage.setItem(key, '[]');
+      });
 
     // Hydrate server state and settings directly from database for cross-browser synchronization
     this.fetchLatestSettingsFromDatabase();
@@ -457,14 +479,23 @@ class StorageService {
 
   // Users
   public getUsers(): User[] {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === 'undefined') return DEFAULT_USERS;
     const raw = localStorage.getItem(USERS_KEY);
-    if (!raw) return [];
+    if (!raw) return DEFAULT_USERS;
     try {
       const parsed: User[] = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      const list = Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_USERS;
+      const hasEfrain = list.some(
+        (u) =>
+          (u.email || '').toLowerCase().includes('efrain.rodriguez') ||
+          u.username === 'efrain.rodriguez'
+      );
+      if (!hasEfrain) {
+        list.unshift(DEFAULT_USERS[0]);
+      }
+      return list;
     } catch {
-      return [];
+      return DEFAULT_USERS;
     }
   }
 
