@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, Calendar, MapPin, Settings, X, 
   Instagram, MessageCircle, Share2, Image as ImageIcon, 
-  RefreshCw, Sliders, Download, CheckCircle2, ShieldCheck, AlertCircle
+  RefreshCw, Sliders, Download, CheckCircle2, ShieldCheck, AlertCircle, Lock, User as UserIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
@@ -12,10 +12,15 @@ export default function App() {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   
-  // Admin & Customizer State
+  // Admin & Customizer State with Authentication
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [adminTab, setAdminTab] = useState<'settings' | 'subscribers'>('settings');
-  const [subscribersList, setSubscribersList] = useState<any[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('laforet_admin_logged') === 'true';
+  });
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [loginUser, setLoginUser] = useState('');
+  const [loginPass, setLoginPass] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   // Load settings from Supabase on mount
   useEffect(() => {
@@ -80,11 +85,38 @@ export default function App() {
     return () => clearInterval(interval);
   }, [settings.target_date]);
 
+  // Handle Admin Login
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    const u = loginUser.trim().toLowerCase();
+    const p = loginPass.trim();
+
+    if ((u === 'efrain.rodriguez' || u === 'efrain') && p === 'ideas1271') {
+      setIsAuthenticated(true);
+      localStorage.setItem('laforet_admin_logged', 'true');
+      setLoginUser('');
+      setLoginPass('');
+    } else {
+      setLoginError('Usuario o contraseña incorrectos. Utilice efrain.rodriguez / ideas1271');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('laforet_admin_logged');
+  };
+
+  const handleCloseAdmin = () => {
+    setIsAdminOpen(false);
+    setIsMinimized(false);
+  };
+
   // Save Settings to Supabase
   const handleSaveSettings = async () => {
     if (!isSupabaseConfigured || !supabase) {
       alert('Configuración guardada localmente (Supabase no conectado).');
-      setIsAdminOpen(false);
+      handleCloseAdmin();
       return;
     }
 
@@ -96,7 +128,7 @@ export default function App() {
 
       if (error) throw error;
       alert('¡Configuración guardada exitosamente en Supabase!');
-      setIsAdminOpen(false);
+      handleCloseAdmin();
     } catch (err: any) {
       console.error(err);
       alert('Error al guardar en Supabase: ' + err.message);
@@ -157,7 +189,7 @@ export default function App() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsAdminOpen(true)}
-            title="Panel de Configuración"
+            title="Panel de Configuración (Requiere Admin)"
             className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-amber-300 transition-all hover:rotate-90 duration-300"
           >
             <Settings className="w-5 h-5" />
@@ -228,7 +260,7 @@ export default function App() {
           ))}
         </motion.div>
 
-        {/* Event Details Grid (Fecha, Hora y Ubicación as requested) */}
+        {/* Event Details Grid (Fecha, Hora y Ubicación) */}
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -301,16 +333,16 @@ export default function App() {
       </footer>
 
       {/* ========================================================== */}
-      {/* ADMIN & CUSTOMIZER PANEL                                   */}
+      {/* ADMIN LOGIN / CUSTOMIZER PANEL                             */}
       {/* ========================================================== */}
       <AnimatePresence>
         {isAdminOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl">
+          <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md transition-all ${isMinimized ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-3xl bg-zinc-950 border border-amber-500/30 rounded-3xl p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto text-left"
+              className="relative w-full max-w-3xl bg-zinc-950/95 border border-amber-500/30 rounded-3xl p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto text-left backdrop-blur-xl"
             >
               <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
                 <div className="flex items-center gap-3">
@@ -319,206 +351,291 @@ export default function App() {
                   </div>
                   <div>
                     <h3 className="font-serif text-xl font-bold text-white">Panel de Control - Laforet Party</h3>
-                    <p className="text-xs text-slate-400">Personaliza la página y la estética del evento</p>
+                    <p className="text-xs text-slate-400">Acceso exclusivo para Administrador</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setIsAdminOpen(false)}
-                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {/* Supabase Status Banner */}
-                <div className={`p-4 rounded-2xl border flex items-center justify-between text-xs ${isSupabaseConfigured ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300' : 'bg-amber-950/40 border-amber-500/30 text-amber-300'}`}>
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>{isSupabaseConfigured ? 'Supabase Conectado' : 'Modo Local / Sin Supabase URL'}</span>
-                  </div>
-                </div>
-
-                {/* General Texts */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Título Principal</label>
-                    <input
-                      type="text"
-                      value={settings.title}
-                      onChange={(e) => setSettings({ ...settings, title: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Subtítulo</label>
-                    <input
-                      type="text"
-                      value={settings.subtitle}
-                      onChange={(e) => setSettings({ ...settings, subtitle: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                {/* Target Date & Venue */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Fecha y Hora Objetivo</label>
-                    <input
-                      type="datetime-local"
-                      value={settings.target_date.slice(0, 16)}
-                      onChange={(e) => setSettings({ ...settings, target_date: e.target.value + ':00' })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-900 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Nombre del Salón / Lugar</label>
-                    <input
-                      type="text"
-                      value={settings.venue_name}
-                      onChange={(e) => setSettings({ ...settings, venue_name: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Dirección</label>
-                    <input
-                      type="text"
-                      value={settings.venue_address}
-                      onChange={(e) => setSettings({ ...settings, venue_address: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                {/* Background Customization */}
-                <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
-                  <h4 className="font-serif text-sm font-bold text-amber-300 flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4" /> Personalización del Fondo y Blur
-                  </h4>
-
-                  {/* Presets */}
-                  <div>
-                    <label className="block text-xs uppercase tracking-widest text-slate-400 mb-2">Presets de Lujo</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                      {BACKGROUND_PRESETS.map((preset, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setSettings({ ...settings, bg_image_url: preset.url })}
-                          className="p-2 rounded-xl bg-black/40 border border-white/15 hover:border-amber-400 text-left transition-all text-xs truncate group"
-                        >
-                          <div className="w-full h-12 rounded-lg bg-cover bg-center mb-1" style={{ backgroundImage: `url(${preset.url})` }} />
-                          <span className="text-slate-300 group-hover:text-amber-300 truncate block">{preset.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">URL de Imagen Personalizada</label>
-                    <input
-                      type="text"
-                      value={settings.bg_image_url}
-                      onChange={(e) => setSettings({ ...settings, bg_image_url: e.target.value })}
-                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400 mb-2"
-                    />
-                    <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium cursor-pointer transition-all">
-                      <UploadIcon className="w-4 h-4" /> Subir Imagen desde dispositivo
-                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-white/10">
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Desenfoque (Blur): {settings.bg_blur}px</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="25"
-                        value={settings.bg_blur}
-                        onChange={(e) => setSettings({ ...settings, bg_blur: Number(e.target.value) })}
-                        className="w-full accent-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Opacidad de Imagen: {Math.round(settings.bg_opacity * 100)}%</label>
-                      <input
-                        type="range"
-                        min="0.1"
-                        max="1"
-                        step="0.05"
-                        value={settings.bg_opacity}
-                        onChange={(e) => setSettings({ ...settings, bg_opacity: Number(e.target.value) })}
-                        className="w-full accent-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Opacidad de Oscurecimiento: {Math.round(settings.overlay_opacity * 100)}%</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="0.95"
-                        step="0.05"
-                        value={settings.overlay_opacity}
-                        onChange={(e) => setSettings({ ...settings, overlay_opacity: Number(e.target.value) })}
-                        className="w-full accent-amber-400"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Social Links */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Instagram URL</label>
-                    <input
-                      type="text"
-                      value={settings.instagram_url}
-                      onChange={(e) => setSettings({ ...settings, instagram_url: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">TikTok URL</label>
-                    <input
-                      type="text"
-                      value={settings.tiktok_url}
-                      onChange={(e) => setSettings({ ...settings, tiktok_url: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">WhatsApp (Teléfono)</label>
-                    <input
-                      type="text"
-                      value={settings.whatsapp_number}
-                      onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    onClick={() => setIsAdminOpen(false)}
-                    className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold uppercase tracking-widest transition-all"
+                <div className="flex items-center gap-2">
+                  {isAuthenticated && (
+                    <button
+                      onClick={() => setIsMinimized(true)}
+                      title="Ocultar panel temporalmente para ver cambios en vivo"
+                      className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Ver Fondo en Vivo</span>
+                    </button>
+                  )}
+                  <button 
+                    onClick={handleCloseAdmin}
+                    className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer"
                   >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleSaveSettings}
-                    className="px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-semibold text-xs uppercase tracking-widest shadow-lg shadow-amber-400/20 transition-all"
-                  >
-                    Guardar Cambios
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
+
+              {!isAuthenticated ? (
+                /* LOGIN FORM FOR ADMIN */
+                <div className="py-8 px-4 max-w-md mx-auto space-y-6 text-center">
+                  <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 mx-auto">
+                    <Lock className="w-8 h-8" />
+                  </div>
+                  <div>
+                    <h4 className="font-serif text-2xl font-bold text-white mb-1">Acceso Restringido</h4>
+                    <p className="text-xs text-slate-400">Ingrese las credenciales de administrador para modificar los ajustes.</p>
+                  </div>
+
+                  <form onSubmit={handleAdminLogin} className="space-y-4 text-left">
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Usuario / Correo</label>
+                      <div className="relative">
+                        <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="efrain.rodriguez"
+                          value={loginUser}
+                          onChange={(e) => setLoginUser(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Contraseña</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                          type="password"
+                          placeholder="••••••••"
+                          value={loginPass}
+                          onChange={(e) => setLoginPass(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {loginError && (
+                      <p className="text-xs text-rose-400 flex items-center gap-1.5 bg-rose-500/10 border border-rose-500/30 p-3 rounded-xl">
+                        <AlertCircle className="w-4 h-4 shrink-0" /> {loginError}
+                      </p>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="w-full py-3.5 rounded-xl font-semibold uppercase tracking-widest text-black bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 hover:from-amber-100 hover:to-amber-400 transition-all shadow-[0_0_20px_rgba(251,191,36,0.3)]"
+                    >
+                      Ingresar como Administrador
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                /* AUTHENTICATED ADMIN PANEL */
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-400/30 text-xs text-amber-300">
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4" /> Sesión iniciada como <strong>efrain.rodriguez</strong> (Administrador)
+                    </span>
+                    <button
+                      onClick={handleLogout}
+                      className="text-xs underline hover:text-white cursor-pointer"
+                    >
+                      Cerrar Sesión
+                    </button>
+                  </div>
+
+                  {/* General Texts */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Título Principal</label>
+                      <input
+                        type="text"
+                        value={settings.title}
+                        onChange={(e) => setSettings({ ...settings, title: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Subtítulo</label>
+                      <input
+                        type="text"
+                        value={settings.subtitle}
+                        onChange={(e) => setSettings({ ...settings, subtitle: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Target Date & Venue */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Fecha y Hora Objetivo</label>
+                      <input
+                        type="datetime-local"
+                        value={settings.target_date.slice(0, 16)}
+                        onChange={(e) => setSettings({ ...settings, target_date: e.target.value + ':00' })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-zinc-900 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Nombre del Salón / Lugar</label>
+                      <input
+                        type="text"
+                        value={settings.venue_name}
+                        onChange={(e) => setSettings({ ...settings, venue_name: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Dirección</label>
+                      <input
+                        type="text"
+                        value={settings.venue_address}
+                        onChange={(e) => setSettings({ ...settings, venue_address: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Background Customization */}
+                  <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+                    <h4 className="font-serif text-sm font-bold text-amber-300 flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4" /> Personalización del Fondo y Blur
+                    </h4>
+
+                    {/* Presets */}
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-400 mb-2">Presets de Lujo</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {BACKGROUND_PRESETS.map((preset, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setSettings({ ...settings, bg_image_url: preset.url })}
+                            className="p-2 rounded-xl bg-black/40 border border-white/15 hover:border-amber-400 text-left transition-all text-xs truncate group"
+                          >
+                            <div className="w-full h-12 rounded-lg bg-cover bg-center mb-1" style={{ backgroundImage: `url(${preset.url})` }} />
+                            <span className="text-slate-300 group-hover:text-amber-300 truncate block">{preset.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">URL de Imagen Personalizada</label>
+                      <input
+                        type="text"
+                        value={settings.bg_image_url}
+                        onChange={(e) => setSettings({ ...settings, bg_image_url: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400 mb-2"
+                      />
+                      <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium cursor-pointer transition-all">
+                        <UploadIcon className="w-4 h-4" /> Subir Imagen desde dispositivo
+                        <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-white/10">
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Desenfoque (Blur): {settings.bg_blur}px</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="25"
+                          value={settings.bg_blur}
+                          onChange={(e) => setSettings({ ...settings, bg_blur: Number(e.target.value) })}
+                          className="w-full accent-amber-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Opacidad de Imagen: {Math.round(settings.bg_opacity * 100)}%</label>
+                        <input
+                          type="range"
+                          min="0.1"
+                          max="1"
+                          step="0.05"
+                          value={settings.bg_opacity}
+                          onChange={(e) => setSettings({ ...settings, bg_opacity: Number(e.target.value) })}
+                          className="w-full accent-amber-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Opacidad de Oscurecimiento: {Math.round(settings.overlay_opacity * 100)}%</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="0.95"
+                          step="0.05"
+                          value={settings.overlay_opacity}
+                          onChange={(e) => setSettings({ ...settings, overlay_opacity: Number(e.target.value) })}
+                          className="w-full accent-amber-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Social Links */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Instagram URL</label>
+                      <input
+                        type="text"
+                        value={settings.instagram_url}
+                        onChange={(e) => setSettings({ ...settings, instagram_url: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">TikTok URL</label>
+                      <input
+                        type="text"
+                        value={settings.tiktok_url}
+                        onChange={(e) => setSettings({ ...settings, tiktok_url: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">WhatsApp (Teléfono)</label>
+                      <input
+                        type="text"
+                        value={settings.whatsapp_number}
+                        onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      onClick={handleCloseAdmin}
+                      className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold uppercase tracking-widest transition-all"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSaveSettings}
+                      className="px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-semibold text-xs uppercase tracking-widest shadow-lg shadow-amber-400/20 transition-all"
+                    >
+                      Guardar Cambios
+                    </button>
+                  </div>
+                </div>
+              )}
 
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* Minimized floating pill when user clicks "Ver Fondo en Vivo" */}
+      {isAdminOpen && isMinimized && (
+        <div 
+          onClick={() => setIsMinimized(false)}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3.5 rounded-full bg-zinc-900/95 border border-amber-500/60 backdrop-blur-2xl shadow-[0_0_40px_rgba(251,191,36,0.4)] text-amber-300 text-xs font-semibold cursor-pointer animate-pulse"
+        >
+          <Sliders className="w-4 h-4 text-amber-400" />
+          <span>Panel de Ajustes Abierto (Haz clic para restaurar y guardar)</span>
+        </div>
+      )}
 
     </div>
   );
