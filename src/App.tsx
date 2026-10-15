@@ -1,0 +1,531 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Sparkles, Calendar, MapPin, Settings, X, 
+  Instagram, MessageCircle, Share2, Image as ImageIcon, 
+  RefreshCw, Sliders, Download, CheckCircle2, ShieldCheck, AlertCircle
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
+import { SiteSettings, DEFAULT_SETTINGS, BACKGROUND_PRESETS } from './types';
+
+export default function App() {
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  
+  // Admin & Customizer State
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [adminTab, setAdminTab] = useState<'settings' | 'subscribers'>('settings');
+  const [subscribersList, setSubscribersList] = useState<any[]>([]);
+
+  // Load settings from Supabase on mount
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('leforet_settings')
+        .select('*')
+        .eq('id', 1)
+        .single();
+      
+      if (data && !error) {
+        setSettings({
+          id: data.id,
+          title: data.title ?? DEFAULT_SETTINGS.title,
+          subtitle: data.subtitle ?? DEFAULT_SETTINGS.subtitle,
+          target_date: data.target_date ?? DEFAULT_SETTINGS.target_date,
+          venue_name: data.venue_name ?? DEFAULT_SETTINGS.venue_name,
+          venue_address: data.venue_address ?? DEFAULT_SETTINGS.venue_address,
+          bg_image_url: data.bg_image_url ?? DEFAULT_SETTINGS.bg_image_url,
+          bg_blur: data.bg_blur ?? DEFAULT_SETTINGS.bg_blur,
+          bg_opacity: data.bg_opacity ?? DEFAULT_SETTINGS.bg_opacity,
+          overlay_color: data.overlay_color ?? DEFAULT_SETTINGS.overlay_color,
+          overlay_opacity: data.overlay_opacity ?? DEFAULT_SETTINGS.overlay_opacity,
+          accent_color: data.accent_color ?? DEFAULT_SETTINGS.accent_color,
+          instagram_url: data.instagram_url ?? DEFAULT_SETTINGS.instagram_url,
+          tiktok_url: data.tiktok_url ?? DEFAULT_SETTINGS.tiktok_url,
+          spotify_url: data.spotify_url ?? DEFAULT_SETTINGS.spotify_url,
+          whatsapp_number: data.whatsapp_number ?? DEFAULT_SETTINGS.whatsapp_number,
+        });
+      }
+    } catch (err) {
+      console.log('Using default settings.');
+    }
+  };
+
+  // Countdown timer logic
+  useEffect(() => {
+    const targetTime = new Date(settings.target_date).getTime();
+
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const difference = targetTime - now;
+
+      if (difference > 0) {
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+        setTimeLeft({ days, hours, minutes, seconds });
+      } else {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [settings.target_date]);
+
+  // Save Settings to Supabase
+  const handleSaveSettings = async () => {
+    if (!isSupabaseConfigured || !supabase) {
+      alert('Configuración guardada localmente (Supabase no conectado).');
+      setIsAdminOpen(false);
+      return;
+    }
+
+    try {
+      const payload = { ...settings, id: 1, updated_at: new Date().toISOString() };
+      const { error } = await supabase
+        .from('leforet_settings')
+        .upsert(payload);
+
+      if (error) throw error;
+      alert('¡Configuración guardada exitosamente en Supabase!');
+      setIsAdminOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      alert('Error al guardar en Supabase: ' + err.message);
+    }
+  };
+
+  // Image Upload handler
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSettings({ ...settings, bg_image_url: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  return (
+    <div className="relative min-h-screen text-slate-100 overflow-x-hidden selection:bg-amber-500 selection:text-black font-sans">
+      
+      {/* Background with dynamic blur, opacity and overlay */}
+      <div className="absolute inset-0 z-0 overflow-hidden bg-black">
+        <div 
+          className="absolute inset-0 bg-cover bg-center transition-all duration-1000 transform scale-105"
+          style={{
+            backgroundImage: `url(${settings.bg_image_url})`,
+            filter: `blur(${settings.bg_blur}px)`,
+            opacity: settings.bg_opacity
+          }}
+        />
+        {/* Color Tint Overlay */}
+        <div 
+          className="absolute inset-0 transition-all duration-500 pointer-events-none"
+          style={{
+            backgroundColor: settings.overlay_color === 'black' ? '#000000' :
+                             settings.overlay_color === 'navy' ? '#020617' :
+                             settings.overlay_color === 'burgundy' ? '#3b070d' :
+                             settings.overlay_color === 'emerald' ? '#022c22' : '#18181b',
+            opacity: settings.overlay_opacity
+          }}
+        />
+        {/* Vignette & Radial Gradient */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/50 to-black pointer-events-none" />
+      </div>
+
+      {/* Floating Header / Navbar */}
+      <header className="relative z-20 w-full px-6 py-6 flex items-center justify-between max-w-7xl mx-auto">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full border border-amber-400/50 flex items-center justify-center bg-black/40 backdrop-blur-md shadow-[0_0_15px_rgba(251,191,36,0.3)]">
+            <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+          </div>
+          <span className="font-serif tracking-[0.25em] text-xl font-bold bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 bg-clip-text text-transparent">
+            LAFORET PARTY
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsAdminOpen(true)}
+            title="Panel de Configuración"
+            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-amber-300 transition-all hover:rotate-90 duration-300"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+        </div>
+      </header>
+
+      {/* Main Hero Content */}
+      <main className="relative z-10 flex flex-col items-center justify-center px-4 pt-16 pb-24 max-w-5xl mx-auto text-center">
+        
+        {/* Badge */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-400/30 backdrop-blur-md text-amber-300 text-xs uppercase tracking-[0.3em] font-medium mb-8 shadow-[0_0_20px_rgba(251,191,36,0.15)]"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <span>Gran Celebración de Fin de Año</span>
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+        </motion.div>
+
+        {/* Title */}
+        <motion.h1 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, delay: 0.2 }}
+          className="font-serif text-5xl md:text-7xl lg:text-8xl font-black tracking-wider text-white mb-6 drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]"
+        >
+          {settings.title}
+        </motion.h1>
+
+        {/* Subtitle */}
+        <motion.p 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, delay: 0.4 }}
+          className="text-lg md:text-2xl text-slate-300 max-w-2xl font-light tracking-wide mb-16 drop-shadow-md"
+        >
+          {settings.subtitle}
+        </motion.p>
+
+        {/* Countdown Timer */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.6 }}
+          className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6 w-full max-w-3xl mb-16"
+        >
+          {[
+            { label: 'Días', value: timeLeft.days },
+            { label: 'Horas', value: timeLeft.hours },
+            { label: 'Minutos', value: timeLeft.minutes },
+            { label: 'Segundos', value: timeLeft.seconds },
+          ].map((item, index) => (
+            <div 
+              key={index}
+              className="relative p-6 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] group hover:border-amber-400/40 transition-all duration-300"
+            >
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="font-serif text-4xl md:text-6xl font-bold text-amber-300 mb-1 drop-shadow-[0_0_15px_rgba(251,191,36,0.4)]">
+                {String(item.value).padStart(2, '0')}
+              </div>
+              <div className="text-xs uppercase tracking-[0.25em] text-slate-400 font-medium">
+                {item.label}
+              </div>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* Event Details Grid (Fecha, Hora y Ubicación as requested) */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.8 }}
+          className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl mb-16"
+        >
+          <div className="p-8 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 text-center flex flex-col items-center justify-center hover:border-amber-400/30 transition-all">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-400/20 flex items-center justify-center text-amber-400 mb-4">
+              <Calendar className="w-6 h-6" />
+            </div>
+            <h4 className="font-serif text-lg font-bold text-white mb-1">Fecha y Hora</h4>
+            <p className="text-sm font-semibold text-amber-300">31 de Diciembre</p>
+            <p className="text-xs text-slate-400 mt-1">A partir de las 22:00 hrs</p>
+          </div>
+
+          <div className="p-8 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 text-center flex flex-col items-center justify-center hover:border-amber-400/30 transition-all">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-400/20 flex items-center justify-center text-amber-400 mb-4">
+              <MapPin className="w-6 h-6" />
+            </div>
+            <h4 className="font-serif text-lg font-bold text-white mb-1">Ubicación</h4>
+            <p className="text-sm font-semibold text-amber-300">{settings.venue_name}</p>
+            <p className="text-xs text-slate-400 mt-1">{settings.venue_address}</p>
+          </div>
+        </motion.div>
+
+        {/* Social & Contact Bar */}
+        <div className="flex items-center justify-center gap-4 flex-wrap mb-12">
+          {settings.instagram_url && (
+            <a 
+              href={settings.instagram_url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-slate-200 hover:text-amber-300 transition-all backdrop-blur-md text-sm font-medium"
+            >
+              <Instagram className="w-4 h-4 text-amber-400" />
+              <span>Instagram</span>
+            </a>
+          )}
+          {settings.tiktok_url && (
+            <a 
+              href={settings.tiktok_url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-slate-200 hover:text-amber-300 transition-all backdrop-blur-md text-sm font-medium"
+            >
+              <Share2 className="w-4 h-4 text-amber-400" />
+              <span>TikTok</span>
+            </a>
+          )}
+          {settings.whatsapp_number && (
+            <a 
+              href={`https://wa.me/${settings.whatsapp_number.replace(/[^0-9]/g, '')}?text=Hola,%20deseo%20información%20sobre%20Laforet%20Party`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition-all backdrop-blur-md text-sm font-medium"
+            >
+              <MessageCircle className="w-4 h-4 text-emerald-400" />
+              <span>WhatsApp</span>
+            </a>
+          )}
+        </div>
+
+      </main>
+
+      {/* Footer */}
+      <footer className="relative z-10 w-full py-8 text-center border-t border-white/10 bg-black/60 backdrop-blur-md">
+        <p className="text-xs text-slate-400 tracking-wider">
+          © {new Date().getFullYear()} LAFORET PARTY. Todos los derechos reservados.
+        </p>
+      </footer>
+
+      {/* ========================================================== */}
+      {/* ADMIN & CUSTOMIZER PANEL                                   */}
+      {/* ========================================================== */}
+      <AnimatePresence>
+        {isAdminOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-3xl bg-zinc-950 border border-amber-500/30 rounded-3xl p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto text-left"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
+                    <Sliders className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-xl font-bold text-white">Panel de Control - Laforet Party</h3>
+                    <p className="text-xs text-slate-400">Personaliza la página y la estética del evento</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsAdminOpen(false)}
+                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Supabase Status Banner */}
+                <div className={`p-4 rounded-2xl border flex items-center justify-between text-xs ${isSupabaseConfigured ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300' : 'bg-amber-950/40 border-amber-500/30 text-amber-300'}`}>
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>{isSupabaseConfigured ? 'Supabase Conectado' : 'Modo Local / Sin Supabase URL'}</span>
+                  </div>
+                </div>
+
+                {/* General Texts */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Título Principal</label>
+                    <input
+                      type="text"
+                      value={settings.title}
+                      onChange={(e) => setSettings({ ...settings, title: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Subtítulo</label>
+                    <input
+                      type="text"
+                      value={settings.subtitle}
+                      onChange={(e) => setSettings({ ...settings, subtitle: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Target Date & Venue */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Fecha y Hora Objetivo</label>
+                    <input
+                      type="datetime-local"
+                      value={settings.target_date.slice(0, 16)}
+                      onChange={(e) => setSettings({ ...settings, target_date: e.target.value + ':00' })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-900 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Nombre del Salón / Lugar</label>
+                    <input
+                      type="text"
+                      value={settings.venue_name}
+                      onChange={(e) => setSettings({ ...settings, venue_name: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Dirección</label>
+                    <input
+                      type="text"
+                      value={settings.venue_address}
+                      onChange={(e) => setSettings({ ...settings, venue_address: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Background Customization */}
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
+                  <h4 className="font-serif text-sm font-bold text-amber-300 flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4" /> Personalización del Fondo y Blur
+                  </h4>
+
+                  {/* Presets */}
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-slate-400 mb-2">Presets de Lujo</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      {BACKGROUND_PRESETS.map((preset, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setSettings({ ...settings, bg_image_url: preset.url })}
+                          className="p-2 rounded-xl bg-black/40 border border-white/15 hover:border-amber-400 text-left transition-all text-xs truncate group"
+                        >
+                          <div className="w-full h-12 rounded-lg bg-cover bg-center mb-1" style={{ backgroundImage: `url(${preset.url})` }} />
+                          <span className="text-slate-300 group-hover:text-amber-300 truncate block">{preset.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">URL de Imagen Personalizada</label>
+                    <input
+                      type="text"
+                      value={settings.bg_image_url}
+                      onChange={(e) => setSettings({ ...settings, bg_image_url: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400 mb-2"
+                    />
+                    <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-medium cursor-pointer transition-all">
+                      <UploadIcon className="w-4 h-4" /> Subir Imagen desde dispositivo
+                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-white/10">
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Desenfoque (Blur): {settings.bg_blur}px</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="25"
+                        value={settings.bg_blur}
+                        onChange={(e) => setSettings({ ...settings, bg_blur: Number(e.target.value) })}
+                        className="w-full accent-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Opacidad de Imagen: {Math.round(settings.bg_opacity * 100)}%</label>
+                      <input
+                        type="range"
+                        min="0.1"
+                        max="1"
+                        step="0.05"
+                        value={settings.bg_opacity}
+                        onChange={(e) => setSettings({ ...settings, bg_opacity: Number(e.target.value) })}
+                        className="w-full accent-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Opacidad de Oscurecimiento: {Math.round(settings.overlay_opacity * 100)}%</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="0.95"
+                        step="0.05"
+                        value={settings.overlay_opacity}
+                        onChange={(e) => setSettings({ ...settings, overlay_opacity: Number(e.target.value) })}
+                        className="w-full accent-amber-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Social Links */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">Instagram URL</label>
+                    <input
+                      type="text"
+                      value={settings.instagram_url}
+                      onChange={(e) => setSettings({ ...settings, instagram_url: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">TikTok URL</label>
+                    <input
+                      type="text"
+                      value={settings.tiktok_url}
+                      onChange={(e) => setSettings({ ...settings, tiktok_url: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs uppercase tracking-widest text-slate-300 mb-1">WhatsApp (Teléfono)</label>
+                    <input
+                      type="text"
+                      value={settings.whatsapp_number}
+                      onChange={(e) => setSettings({ ...settings, whatsapp_number: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    onClick={() => setIsAdminOpen(false)}
+                    className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold uppercase tracking-widest transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveSettings}
+                    className="px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-semibold text-xs uppercase tracking-widest shadow-lg shadow-amber-400/20 transition-all"
+                  >
+                    Guardar Cambios
+                  </button>
+                </div>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
+  );
+}
+
+function UploadIcon(props: any) {
+  return (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+  );
+}
