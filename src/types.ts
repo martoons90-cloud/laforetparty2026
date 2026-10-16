@@ -19,7 +19,7 @@ export interface SiteSettings {
 
 export const DEFAULT_SETTINGS: SiteSettings = {
   id: 1,
-  title: 'LAFORET PARTY',
+  title: 'LEFORET FEST',
   subtitle: 'La Celebración de Fin de Año Más Esperada',
   target_date: '2026-12-31T23:59:59',
   venue_name: 'Gran Salón Leforet',
@@ -30,8 +30,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   overlay_color: 'black',
   overlay_opacity: 0.70,
   accent_color: 'amber',
-  instagram_url: 'https://instagram.com/laforetparty',
-  tiktok_url: 'https://tiktok.com/@laforetparty',
+  instagram_url: 'https://instagram.com/leforetfest',
+  tiktok_url: 'https://tiktok.com/@leforetfest',
   spotify_url: 'https://spotify.com',
   whatsapp_number: '+34600000000',
 };

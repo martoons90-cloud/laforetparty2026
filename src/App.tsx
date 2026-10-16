@@ -182,7 +182,7 @@ export default function App() {
             <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
           </div>
           <span className="font-serif tracking-[0.25em] text-xl font-bold bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 bg-clip-text text-transparent">
-            LAFORET PARTY
+            LEFORET FEST
           </span>
         </div>
 
@@ -312,7 +312,7 @@ export default function App() {
           )}
           {settings.whatsapp_number && (
             <a 
-              href={`https://wa.me/${settings.whatsapp_number.replace(/[^0-9]/g, '')}?text=Hola,%20deseo%20información%20sobre%20Laforet%20Party`} 
+              href={`https://wa.me/${settings.whatsapp_number.replace(/[^0-9]/g, '')}?text=Hola,%20deseo%20información%20sobre%20Leforet%20Fest`} 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition-all backdrop-blur-md text-sm font-medium"
@@ -328,7 +328,7 @@ export default function App() {
       {/* Footer */}
       <footer className="relative z-10 w-full py-8 text-center border-t border-white/10 bg-black/60 backdrop-blur-md">
         <p className="text-xs text-slate-400 tracking-wider">
-          © {new Date().getFullYear()} LAFORET PARTY. Todos los derechos reservados.
+          © {new Date().getFullYear()} LEFORET FEST. Todos los derechos reservados.
         </p>
       </footer>
 
@@ -350,7 +350,7 @@ export default function App() {
                     <Sliders className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-serif text-xl font-bold text-white">Panel de Control - Laforet Party</h3>
+                    <h3 className="font-serif text-xl font-bold text-white">Panel de Control - Leforet Fest</h3>
                     <p className="text-xs text-slate-400">Acceso exclusivo para Administrador</p>
                   </div>
                 </div>
