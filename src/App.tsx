@@ -1,8 +1,14 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, Calendar, MapPin, Settings, X, 
   Instagram, MessageCircle, Share2, Image as ImageIcon, 
-  RefreshCw, Sliders, Download, CheckCircle2, ShieldCheck, AlertCircle, Lock, User as UserIcon
+  RefreshCw, Sliders, CheckCircle2, ShieldCheck, AlertCircle, Lock, User as UserIcon,
+  Ticket
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
@@ -37,13 +43,35 @@ export default function App() {
         .single();
       
       if (data && !error) {
+        const effectiveDate = data.target_date && data.target_date.includes('2026-12-31')
+          ? '2026-12-19T22:00:00'
+          : (data.target_date ?? '2026-12-19T22:00:00');
+
+        const effectiveVenueName = (!data.venue_name || data.venue_name === 'A confirmar' || data.venue_name.includes('Imperial'))
+          ? 'Estancia El Forestal'
+          : data.venue_name;
+        const effectiveVenueAddress = (!data.venue_address || data.venue_address === 'A confirmar' || data.venue_address.includes('Zona Rosa'))
+          ? 'Estancia El Forestal'
+          : data.venue_address;
+
+        if (data.target_date && data.target_date.includes('2026-12-31')) {
+          supabase.from('leforet_settings').update({ target_date: '2026-12-19T22:00:00' }).eq('id', 1).then();
+        }
+
+        if (data.venue_name !== effectiveVenueName || data.venue_address !== effectiveVenueAddress) {
+          supabase.from('leforet_settings').update({ 
+            venue_name: effectiveVenueName, 
+            venue_address: effectiveVenueAddress 
+          }).eq('id', 1).then();
+        }
+
         setSettings({
           id: data.id,
           title: data.title ?? DEFAULT_SETTINGS.title,
           subtitle: data.subtitle ?? DEFAULT_SETTINGS.subtitle,
-          target_date: data.target_date ?? DEFAULT_SETTINGS.target_date,
-          venue_name: data.venue_name ?? DEFAULT_SETTINGS.venue_name,
-          venue_address: data.venue_address ?? DEFAULT_SETTINGS.venue_address,
+          target_date: effectiveDate,
+          venue_name: effectiveVenueName,
+          venue_address: effectiveVenueAddress,
           bg_image_url: data.bg_image_url ?? DEFAULT_SETTINGS.bg_image_url,
           bg_blur: data.bg_blur ?? DEFAULT_SETTINGS.bg_blur,
           bg_opacity: data.bg_opacity ?? DEFAULT_SETTINGS.bg_opacity,
@@ -148,7 +176,7 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-screen text-slate-100 overflow-x-hidden selection:bg-amber-500 selection:text-black font-sans">
+    <div className="relative min-h-screen text-slate-100 overflow-x-hidden selection:bg-white selection:text-black">
       
       {/* Background with dynamic blur, opacity and overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden bg-black">
@@ -172,25 +200,31 @@ export default function App() {
           }}
         />
         {/* Vignette & Radial Gradient */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/50 to-black pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/60 to-black pointer-events-none" />
       </div>
 
       {/* Floating Header / Navbar */}
       <header className="relative z-20 w-full px-6 py-6 flex items-center justify-between max-w-7xl mx-auto">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full border border-amber-400/50 flex items-center justify-center bg-black/40 backdrop-blur-md shadow-[0_0_15px_rgba(251,191,36,0.3)]">
-            <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-full border border-white/25 flex items-center justify-center bg-black/60 backdrop-blur-xl shadow-[0_0_20px_rgba(255,255,255,0.15)] overflow-hidden p-1.5">
+            <img 
+              src="/assets/aistudio/logo_frt_white.png" 
+              alt="Logo FRT" 
+              className="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(255,255,255,0.8)]"
+            />
           </div>
-          <span className="font-serif tracking-[0.25em] text-xl font-bold bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 bg-clip-text text-transparent">
-            LAFORET FEST
-          </span>
+          <div>
+            <span className="font-logo tracking-[0.35em] text-xl md:text-2xl font-normal text-white drop-shadow-md">
+              LAFORET FEST
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsAdminOpen(true)}
-            title="Panel de Configuración (Requiere Admin)"
-            className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 text-amber-300 transition-all hover:rotate-90 duration-300"
+            title="Panel de Configuración (Admin)"
+            className="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 text-white transition-all hover:rotate-90 duration-300 shadow-lg cursor-pointer"
           >
             <Settings className="w-5 h-5" />
           </button>
@@ -198,36 +232,40 @@ export default function App() {
       </header>
 
       {/* Main Hero Content */}
-      <main className="relative z-10 flex flex-col items-center justify-center px-4 pt-16 pb-24 max-w-5xl mx-auto text-center">
+      <main className="relative z-10 flex flex-col items-center justify-center px-4 pt-8 pb-24 max-w-5xl mx-auto text-center">
         
         {/* Badge */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-400/30 backdrop-blur-md text-amber-300 text-xs uppercase tracking-[0.3em] font-medium mb-8 shadow-[0_0_20px_rgba(251,191,36,0.15)]"
+          className="inline-flex items-center gap-2.5 px-6 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-xl text-white text-xs uppercase tracking-[0.35em] font-medium mb-10 shadow-[0_0_25px_rgba(255,255,255,0.15)]"
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>Gran Celebración de Fin de Año</span>
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <Sparkles className="w-4 h-4 text-white animate-spin" style={{ animationDuration: '6s' }} />
+          <span>Gran Celebración • 19 de Diciembre</span>
+          <Sparkles className="w-4 h-4 text-white" />
         </motion.div>
 
-        {/* Title */}
-        <motion.h1 
+        {/* Central Logo - Logotipo Principal LA FORÊT (Logo png-05) */}
+        <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, delay: 0.2 }}
-          className="font-serif text-5xl md:text-7xl lg:text-8xl font-black tracking-wider text-white mb-6 drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]"
+          className="w-full max-w-xl sm:max-w-2xl mx-auto mb-8 flex flex-col items-center justify-center px-4"
         >
-          {settings.title}
-        </motion.h1>
+          <img 
+            src="/assets/aistudio/logo_laforet_05_white.png" 
+            alt="LA FORÊT" 
+            className="w-auto h-72 sm:h-96 md:h-[420px] lg:h-[500px] max-w-full object-contain filter drop-shadow-[0_15px_50px_rgba(255,255,255,0.4)] hover:scale-105 transition-transform duration-700"
+          />
+        </motion.div>
 
         {/* Subtitle */}
         <motion.p 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, delay: 0.4 }}
-          className="text-lg md:text-2xl text-slate-300 max-w-2xl font-light tracking-wide mb-16 drop-shadow-md"
+          className="text-lg md:text-2xl text-slate-200 max-w-2xl font-logo tracking-[0.2em] mb-16 drop-shadow-md"
         >
           {settings.subtitle}
         </motion.p>
@@ -247,13 +285,13 @@ export default function App() {
           ].map((item, index) => (
             <div 
               key={index}
-              className="relative p-6 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] group hover:border-amber-400/40 transition-all duration-300"
+              className="relative p-6 md:p-8 rounded-3xl bg-black/60 backdrop-blur-2xl border border-white/15 shadow-[0_10px_40px_rgba(0,0,0,0.6)] group hover:border-white/40 transition-all duration-300"
             >
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-              <div className="font-serif text-4xl md:text-6xl font-bold text-amber-300 mb-1 drop-shadow-[0_0_15px_rgba(251,191,36,0.4)]">
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="font-logo text-4xl md:text-6xl font-light text-white mb-1 drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">
                 {String(item.value).padStart(2, '0')}
               </div>
-              <div className="text-xs uppercase tracking-[0.25em] text-slate-400 font-medium">
+              <div className="text-xs uppercase tracking-[0.35em] text-slate-400 font-medium">
                 {item.label}
               </div>
             </div>
@@ -265,37 +303,58 @@ export default function App() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.8 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl mb-16"
+          className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl mb-16"
         >
-          <div className="p-8 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 text-center flex flex-col items-center justify-center hover:border-amber-400/30 transition-all">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-400/20 flex items-center justify-center text-amber-400 mb-4">
-              <Calendar className="w-6 h-6" />
+          <div className="p-8 rounded-3xl bg-black/60 backdrop-blur-2xl border border-white/10 text-center flex flex-col items-center justify-center hover:border-white/30 transition-all shadow-xl group">
+            <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+              <Calendar className="w-7 h-7" />
             </div>
-            <h4 className="font-serif text-lg font-bold text-white mb-1">Fecha y Hora</h4>
-            <p className="text-sm font-semibold text-amber-300">31 de Diciembre</p>
-            <p className="text-xs text-slate-400 mt-1">A partir de las 22:00 hrs</p>
+            <h4 className="font-logo text-2xl font-normal text-white mb-1">Fecha y Hora</h4>
+            <p className="text-base font-semibold text-white tracking-wider">19 de Diciembre de 2026</p>
+            <p className="text-xs text-slate-400 mt-1 uppercase tracking-[0.2em]">A partir de las 22:00 hrs</p>
           </div>
 
-          <div className="p-8 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 text-center flex flex-col items-center justify-center hover:border-amber-400/30 transition-all">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-400/20 flex items-center justify-center text-amber-400 mb-4">
-              <MapPin className="w-6 h-6" />
+          <div className="p-8 rounded-3xl bg-black/60 backdrop-blur-2xl border border-white/10 text-center flex flex-col items-center justify-center hover:border-white/30 transition-all shadow-xl group">
+            <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+              <MapPin className="w-7 h-7" />
             </div>
-            <h4 className="font-serif text-lg font-bold text-white mb-1">Ubicación</h4>
-            <p className="text-sm font-semibold text-amber-300">{settings.venue_name}</p>
-            <p className="text-xs text-slate-400 mt-1">{settings.venue_address}</p>
+            <h4 className="font-logo text-2xl font-normal text-white mb-1">Lugar</h4>
+            <p className="text-base font-semibold text-white tracking-wider">{settings.venue_name || 'Estancia El Forestal'}</p>
+            <p className="text-xs text-slate-400 mt-1 uppercase tracking-[0.2em]">Estancia El Forestal</p>
           </div>
         </motion.div>
 
-        {/* Social & Contact Bar */}
+        {/* Cartel Oficial: Próximamente Venta de Entradas */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.9, delay: 0.85 }}
+          className="w-full max-w-xl mb-16 p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-white/[0.08] via-white/[0.18] to-white/[0.08] backdrop-blur-2xl border-2 border-white/35 shadow-[0_0_40px_rgba(255,255,255,0.25)] flex items-center justify-center gap-4 sm:gap-5 text-center relative overflow-hidden group hover:border-white/60 transition-all duration-500"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
+          <div className="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-white shrink-0 shadow-lg">
+            <Ticket className="w-6 h-6 text-white animate-pulse" />
+          </div>
+          <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
+            <span className="text-[10px] sm:text-xs uppercase tracking-[0.35em] text-slate-300 font-medium">
+              Acceso Oficial
+            </span>
+            <span className="font-logo text-xl sm:text-2xl md:text-3xl font-light tracking-[0.22em] text-white uppercase drop-shadow-[0_2px_15px_rgba(255,255,255,0.7)]">
+              Próximamente Venta de Entradas
+            </span>
+          </div>
+        </motion.div>
+
+        {/* Social Bar */}
         <div className="flex items-center justify-center gap-4 flex-wrap mb-12">
           {settings.instagram_url && (
             <a 
               href={settings.instagram_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-slate-200 hover:text-amber-300 transition-all backdrop-blur-md text-sm font-medium"
+              className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white/5 hover:bg-white/15 border border-white/15 text-slate-200 hover:text-white transition-all backdrop-blur-xl text-sm font-semibold shadow-lg"
             >
-              <Instagram className="w-4 h-4 text-amber-400" />
+              <Instagram className="w-4 h-4 text-white" />
               <span>Instagram</span>
             </a>
           )}
@@ -304,21 +363,10 @@ export default function App() {
               href={settings.tiktok_url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-slate-200 hover:text-amber-300 transition-all backdrop-blur-md text-sm font-medium"
+              className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white/5 hover:bg-white/15 border border-white/15 text-slate-200 hover:text-white transition-all backdrop-blur-xl text-sm font-semibold shadow-lg"
             >
-              <Share2 className="w-4 h-4 text-amber-400" />
+              <Share2 className="w-4 h-4 text-white" />
               <span>TikTok</span>
-            </a>
-          )}
-          {settings.whatsapp_number && (
-            <a 
-              href={`https://wa.me/${settings.whatsapp_number.replace(/[^0-9]/g, '')}?text=Hola,%20deseo%20información%20sobre%20Laforet%20Fest`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 transition-all backdrop-blur-md text-sm font-medium"
-            >
-              <MessageCircle className="w-4 h-4 text-emerald-400" />
-              <span>WhatsApp</span>
             </a>
           )}
         </div>
@@ -326,7 +374,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 w-full py-8 text-center border-t border-white/10 bg-black/60 backdrop-blur-md">
+      <footer className="relative z-10 w-full py-8 text-center border-t border-white/10 bg-black/80 backdrop-blur-xl">
         <p className="text-xs text-slate-400 tracking-wider">
           © {new Date().getFullYear()} LAFORET FEST. Todos los derechos reservados.
         </p>
@@ -423,7 +471,7 @@ export default function App() {
 
                     <button
                       type="submit"
-                      className="w-full py-3.5 rounded-xl font-semibold uppercase tracking-widest text-black bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 hover:from-amber-100 hover:to-amber-400 transition-all shadow-[0_0_20px_rgba(251,191,36,0.3)]"
+                      className="w-full py-3.5 rounded-xl font-semibold uppercase tracking-widest text-black bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 hover:from-amber-100 hover:to-amber-400 transition-all shadow-[0_0_20px_rgba(251,191,36,0.3)] cursor-pointer"
                     >
                       Ingresar como Administrador
                     </button>
@@ -511,7 +559,7 @@ export default function App() {
                           <button
                             key={idx}
                             onClick={() => setSettings({ ...settings, bg_image_url: preset.url })}
-                            className="p-2 rounded-xl bg-black/40 border border-white/15 hover:border-amber-400 text-left transition-all text-xs truncate group"
+                            className="p-2 rounded-xl bg-black/40 border border-white/15 hover:border-amber-400 text-left transition-all text-xs truncate group cursor-pointer"
                           >
                             <div className="w-full h-12 rounded-lg bg-cover bg-center mb-1" style={{ backgroundImage: `url(${preset.url})` }} />
                             <span className="text-slate-300 group-hover:text-amber-300 truncate block">{preset.name}</span>
@@ -543,7 +591,7 @@ export default function App() {
                           max="25"
                           value={settings.bg_blur}
                           onChange={(e) => setSettings({ ...settings, bg_blur: Number(e.target.value) })}
-                          className="w-full accent-amber-400"
+                          className="w-full accent-amber-400 cursor-pointer"
                         />
                       </div>
                       <div>
@@ -555,7 +603,7 @@ export default function App() {
                           step="0.05"
                           value={settings.bg_opacity}
                           onChange={(e) => setSettings({ ...settings, bg_opacity: Number(e.target.value) })}
-                          className="w-full accent-amber-400"
+                          className="w-full accent-amber-400 cursor-pointer"
                         />
                       </div>
                       <div>
@@ -567,7 +615,7 @@ export default function App() {
                           step="0.05"
                           value={settings.overlay_opacity}
                           onChange={(e) => setSettings({ ...settings, overlay_opacity: Number(e.target.value) })}
-                          className="w-full accent-amber-400"
+                          className="w-full accent-amber-400 cursor-pointer"
                         />
                       </div>
                     </div>
@@ -607,13 +655,13 @@ export default function App() {
                   <div className="flex justify-end gap-3 pt-4">
                     <button
                       onClick={handleCloseAdmin}
-                      className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold uppercase tracking-widest transition-all"
+                      className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold uppercase tracking-widest transition-all cursor-pointer"
                     >
                       Cancelar
                     </button>
                     <button
                       onClick={handleSaveSettings}
-                      className="px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-semibold text-xs uppercase tracking-widest shadow-lg shadow-amber-400/20 transition-all"
+                      className="px-6 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-semibold text-xs uppercase tracking-widest shadow-lg shadow-amber-400/20 transition-all cursor-pointer"
                     >
                       Guardar Cambios
                     </button>

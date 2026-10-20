@@ -1,1 +1,35 @@
 @import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Marcellus', 'Italiana', 'Cinzel', serif;
+    background-color: #000000;
+    color: #f8fafc;
+    letter-spacing: 0.05em;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-serif, .font-logo {
+    font-family: 'Italiana', 'Marcellus', 'Cinzel', serif;
+    letter-spacing: 0.15em;
+  }
+
+  button, input, textarea, select {
+    font-family: 'Marcellus', 'Cinzel', serif;
+  }
+}
+
+.font-logo {
+  font-family: 'Italiana', 'Marcellus', 'Cinzel', serif;
+}
+
+.font-editorial {
+  font-family: 'Italiana', serif;
+}
+
+.font-roman {
+  font-family: 'Marcellus', serif;
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
