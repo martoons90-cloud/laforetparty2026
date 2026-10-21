@@ -8,11 +8,12 @@ import {
   Sparkles, Calendar, MapPin, Settings, X, 
   Instagram, MessageCircle, Share2, Image as ImageIcon, 
   RefreshCw, Sliders, CheckCircle2, ShieldCheck, AlertCircle, Lock, User as UserIcon,
-  Ticket
+  Ticket, Film, Video, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { SiteSettings, DEFAULT_SETTINGS, BACKGROUND_PRESETS } from './types';
+import { BackgroundPartyVideo } from './components/BackgroundPartyVideo';
 
 export default function App() {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
@@ -43,9 +44,9 @@ export default function App() {
         .single();
       
       if (data && !error) {
-        const effectiveDate = data.target_date && data.target_date.includes('2026-12-31')
-          ? '2026-12-19T22:00:00'
-          : (data.target_date ?? '2026-12-19T22:00:00');
+        const effectiveDate = (!data.target_date || data.target_date.includes('2026-12-31') || data.target_date.includes('22:00:00'))
+          ? '2026-12-19T18:00:00'
+          : data.target_date;
 
         const effectiveVenueName = (!data.venue_name || data.venue_name === 'A confirmar' || data.venue_name.includes('Imperial'))
           ? 'Estancia El Forestal'
@@ -54,8 +55,28 @@ export default function App() {
           ? 'Estancia El Forestal'
           : data.venue_address;
 
-        if (data.target_date && data.target_date.includes('2026-12-31')) {
-          supabase.from('leforet_settings').update({ target_date: '2026-12-19T22:00:00' }).eq('id', 1).then();
+        const effectiveSubtitle = (!data.subtitle || data.subtitle.toLowerCase().includes('celebraci'))
+          ? 'Fin de Año Fest'
+          : data.subtitle;
+
+        const effectiveBgImage = (!data.bg_image_url || data.bg_image_url.includes('unsplash'))
+          ? '/assets/aistudio/Glamour_nocturno_en_estelas_de_luz_376432af.png'
+          : data.bg_image_url;
+
+        const effectiveBgBlur = (data.bg_image_url && !data.bg_image_url.includes('unsplash'))
+          ? (data.bg_blur ?? 0)
+          : 0;
+
+        const effectiveBgOpacity = (data.bg_image_url && !data.bg_image_url.includes('unsplash'))
+          ? (data.bg_opacity ?? 1)
+          : 1;
+
+        const effectiveOverlayOpacity = (data.bg_image_url && !data.bg_image_url.includes('unsplash'))
+          ? (data.overlay_opacity ?? 0)
+          : 0;
+
+        if (data.target_date !== effectiveDate) {
+          supabase.from('leforet_settings').update({ target_date: effectiveDate }).eq('id', 1).then();
         }
 
         if (data.venue_name !== effectiveVenueName || data.venue_address !== effectiveVenueAddress) {
@@ -65,18 +86,28 @@ export default function App() {
           }).eq('id', 1).then();
         }
 
+        if (data.subtitle?.toLowerCase().includes('celebraci') || !data.bg_image_url || data.bg_image_url.includes('unsplash')) {
+          supabase.from('leforet_settings').update({
+            subtitle: effectiveSubtitle,
+            bg_image_url: effectiveBgImage,
+            bg_blur: effectiveBgBlur,
+            bg_opacity: effectiveBgOpacity,
+            overlay_opacity: effectiveOverlayOpacity
+          }).eq('id', 1).then();
+        }
+
         setSettings({
           id: data.id,
           title: data.title ?? DEFAULT_SETTINGS.title,
-          subtitle: data.subtitle ?? DEFAULT_SETTINGS.subtitle,
+          subtitle: effectiveSubtitle,
           target_date: effectiveDate,
           venue_name: effectiveVenueName,
           venue_address: effectiveVenueAddress,
-          bg_image_url: data.bg_image_url ?? DEFAULT_SETTINGS.bg_image_url,
-          bg_blur: data.bg_blur ?? DEFAULT_SETTINGS.bg_blur,
-          bg_opacity: data.bg_opacity ?? DEFAULT_SETTINGS.bg_opacity,
+          bg_image_url: effectiveBgImage,
+          bg_blur: effectiveBgBlur,
+          bg_opacity: effectiveBgOpacity,
           overlay_color: data.overlay_color ?? DEFAULT_SETTINGS.overlay_color,
-          overlay_opacity: data.overlay_opacity ?? DEFAULT_SETTINGS.overlay_opacity,
+          overlay_opacity: effectiveOverlayOpacity,
           accent_color: data.accent_color ?? DEFAULT_SETTINGS.accent_color,
           instagram_url: data.instagram_url ?? DEFAULT_SETTINGS.instagram_url,
           tiktok_url: data.tiktok_url ?? DEFAULT_SETTINGS.tiktok_url,
@@ -178,30 +209,9 @@ export default function App() {
   return (
     <div className="relative min-h-screen text-slate-100 overflow-x-hidden selection:bg-white selection:text-black">
       
-      {/* Background with dynamic blur, opacity and overlay */}
-      <div className="absolute inset-0 z-0 overflow-hidden bg-black">
-        <div 
-          className="absolute inset-0 bg-cover bg-center transition-all duration-1000 transform scale-105"
-          style={{
-            backgroundImage: `url(${settings.bg_image_url})`,
-            filter: `blur(${settings.bg_blur}px)`,
-            opacity: settings.bg_opacity
-          }}
-        />
-        {/* Color Tint Overlay */}
-        <div 
-          className="absolute inset-0 transition-all duration-500 pointer-events-none"
-          style={{
-            backgroundColor: settings.overlay_color === 'black' ? '#000000' :
-                             settings.overlay_color === 'navy' ? '#020617' :
-                             settings.overlay_color === 'burgundy' ? '#3b070d' :
-                             settings.overlay_color === 'emerald' ? '#022c22' : '#18181b',
-            opacity: settings.overlay_opacity
-          }}
-        />
-        {/* Vignette & Radial Gradient */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/60 to-black pointer-events-none" />
-      </div>
+      {/* Background: Party Video in B&W with Slow Motion & Subtle Glitch Transitions */}
+      <BackgroundPartyVideo settings={settings} />
+
 
       {/* Floating Header / Navbar */}
       <header className="relative z-20 w-full px-6 py-6 flex items-center justify-between max-w-7xl mx-auto">
@@ -242,7 +252,7 @@ export default function App() {
           className="inline-flex items-center gap-2.5 px-6 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-xl text-white text-xs uppercase tracking-[0.35em] font-medium mb-10 shadow-[0_0_25px_rgba(255,255,255,0.15)]"
         >
           <Sparkles className="w-4 h-4 text-white animate-spin" style={{ animationDuration: '6s' }} />
-          <span>Gran Celebración • 19 de Diciembre</span>
+          <span>Fin de Año Fest • 19 de Diciembre</span>
           <Sparkles className="w-4 h-4 text-white" />
         </motion.div>
 
@@ -311,7 +321,9 @@ export default function App() {
             </div>
             <h4 className="font-logo text-2xl font-normal text-white mb-1">Fecha y Hora</h4>
             <p className="text-base font-semibold text-white tracking-wider">19 de Diciembre de 2026</p>
-            <p className="text-xs text-slate-400 mt-1 uppercase tracking-[0.2em]">A partir de las 22:00 hrs</p>
+            <p className="text-xs text-slate-400 mt-1 uppercase tracking-[0.2em]">
+              A partir de las {settings.target_date ? settings.target_date.slice(11, 16) : '18:00'} hs
+            </p>
           </div>
 
           <div className="p-8 rounded-3xl bg-black/60 backdrop-blur-2xl border border-white/10 text-center flex flex-col items-center justify-center hover:border-white/30 transition-all shadow-xl group">
@@ -545,19 +557,120 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Background Customization */}
-                  <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4">
-                    <h4 className="font-serif text-sm font-bold text-amber-300 flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4" /> Personalización del Fondo y Blur
-                    </h4>
+                  {/* Background & Video Customization */}
+                  <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-5">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-serif text-sm font-bold text-amber-300 flex items-center gap-2">
+                        <Video className="w-4 h-4" /> Video de Fondo & Estilo Visual
+                      </h4>
+                      <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/10 text-white font-mono">
+                        B&W • Slow-Motion • Glitch
+                      </span>
+                    </div>
 
-                    {/* Presets */}
+                    {/* Video Toggle & Glitch Toggle */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="flex items-center justify-between p-3.5 rounded-xl bg-black/40 border border-white/10">
+                        <div className="flex items-center gap-2.5">
+                          <Film className="w-4 h-4 text-amber-300" />
+                          <div>
+                            <span className="text-xs font-semibold text-white block">Video de Fiesta</span>
+                            <span className="text-[11px] text-slate-400">Blanco y Negro continuo</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSettings({ ...settings, bg_video_enabled: settings.bg_video_enabled === false ? true : false })}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            settings.bg_video_enabled !== false
+                              ? 'bg-amber-400 text-black shadow-[0_0_12px_rgba(251,191,36,0.4)]'
+                              : 'bg-white/10 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {settings.bg_video_enabled !== false ? 'ACTIVADO' : 'DESACTIVADO'}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3.5 rounded-xl bg-black/40 border border-white/10">
+                        <div className="flex items-center gap-2.5">
+                          <Zap className="w-4 h-4 text-cyan-300" />
+                          <div>
+                            <span className="text-xs font-semibold text-white block">Efecto Glitch</span>
+                            <span className="text-[11px] text-slate-400">Transiciones sutiles</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSettings({ ...settings, bg_glitch_enabled: settings.bg_glitch_enabled === false ? true : false })}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            settings.bg_glitch_enabled !== false
+                              ? 'bg-cyan-400 text-black shadow-[0_0_12px_rgba(34,211,238,0.4)]'
+                              : 'bg-white/10 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {settings.bg_glitch_enabled !== false ? 'SUTIL' : 'APAGADO'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Slow Motion Selector */}
+                    {settings.bg_video_enabled !== false && (
+                      <div className="p-3.5 rounded-xl bg-black/30 border border-white/10">
+                        <label className="block text-xs uppercase tracking-widest text-slate-300 mb-2">
+                          Velocidad de Cámara Lenta ({settings.bg_video_speed ?? 0.75}x)
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { label: '0.5x (Lenta)', val: 0.5 },
+                            { label: '0.75x (Sutil ⭐)', val: 0.75 },
+                            { label: '1.0x (Normal)', val: 1.0 },
+                          ].map((item) => (
+                            <button
+                              key={item.val}
+                              type="button"
+                              onClick={() => setSettings({ ...settings, bg_video_speed: item.val })}
+                              className={`py-2 px-3 rounded-lg text-xs font-medium transition-all cursor-pointer text-center ${
+                                (settings.bg_video_speed ?? 0.75) === item.val
+                                  ? 'bg-white text-black font-bold shadow-md'
+                                  : 'bg-white/5 hover:bg-white/10 text-slate-300'
+                              }`}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Video URL */}
                     <div>
-                      <label className="block text-xs uppercase tracking-widest text-slate-400 mb-2">Presets de Lujo</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs uppercase tracking-widest text-slate-400">URL del Video de Fiesta (MP4/WebM)</label>
+                        <button
+                          type="button"
+                          onClick={() => setSettings({ ...settings, bg_video_url: '/assets/videos/party_noir.mp4' })}
+                          className="text-[11px] text-amber-300 hover:underline cursor-pointer"
+                        >
+                          Restablecer Video Oficial B&W
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={settings.bg_video_url || '/assets/videos/party_noir.mp4'}
+                        onChange={(e) => setSettings({ ...settings, bg_video_url: e.target.value })}
+                        className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/15 text-white text-sm focus:outline-none focus:border-amber-400"
+                        placeholder="/assets/videos/party_noir.mp4"
+                      />
+                    </div>
+
+                    {/* Presets de Imagen Fallback / Estática */}
+                    <div>
+                      <label className="block text-xs uppercase tracking-widest text-slate-400 mb-2">Imagen de Portada / Fondo Alternativo</label>
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                         {BACKGROUND_PRESETS.map((preset, idx) => (
                           <button
                             key={idx}
+                            type="button"
                             onClick={() => setSettings({ ...settings, bg_image_url: preset.url })}
                             className="p-2 rounded-xl bg-black/40 border border-white/15 hover:border-amber-400 text-left transition-all text-xs truncate group cursor-pointer"
                           >
@@ -595,7 +708,7 @@ export default function App() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Opacidad de Imagen: {Math.round(settings.bg_opacity * 100)}%</label>
+                        <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Opacidad: {Math.round(settings.bg_opacity * 100)}%</label>
                         <input
                           type="range"
                           min="0.1"
@@ -607,7 +720,7 @@ export default function App() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Opacidad de Oscurecimiento: {Math.round(settings.overlay_opacity * 100)}%</label>
+                        <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Oscurecimiento: {Math.round(settings.overlay_opacity * 100)}%</label>
                         <input
                           type="range"
                           min="0"
